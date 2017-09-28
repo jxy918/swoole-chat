@@ -1,0 +1,173 @@
+<html><head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>简单swoole即时聊天</title>
+  <!-- Include these three JS files: -->
+  <script type="text/javascript" src="flash-websocket/swfobject.js"></script>
+  <script type="text/javascript" src="flash-websocket/web_socket.js"></script>
+<script>
+var websocket;
+// Set URL of your WebSocketMain.swf here:
+WEB_SOCKET_SWF_LOCATION = "flash-websocket/WebSocketMain.swf";
+// Set this to dump debug message from Flash to console.log:
+WEB_SOCKET_DEBUG = true;
+
+var initWebSocket = function() {
+	websocket = new WebSocket('ws://192.168.7.196:9502/'); 	
+	
+	if(websocket) {
+		websocket.onopen = function (evt) {
+            var nickname = getRequest('name');
+            if(typeof(nickname) == 'undefined' || nickname == '') {
+                alert('必须的输入一个名称才可以聊天');
+                websocket.close();
+                return false;
+            } else {
+    			console.log("Connected to WebSocket server.");
+                //发送登陆消息
+                msg = new Object();
+                msg.cmd = 'Login';
+                msg.name = nickname;
+                websocket.send(JSON.stringify(msg));
+            }
+		}; 
+
+		websocket.onmessage = function (evt) {
+			var data = JSON.parse(evt.data);
+            console.log(data);
+            switch(data['cmd']) {
+                case 'getOnline':
+                    showList(data['msg']);
+                    break;
+                default:
+                    showContent(data['msg']);
+                    break;
+            
+            }
+		}; 
+		
+		websocket.onclose = function (evt) { 
+			console.log("Disconnected"); 
+		}; 
+
+		websocket.onerror = function (evt, e) {
+			console.log('Error occured: ' + evt.data);
+		};
+	} else {
+		console.log('Your browser does not support Web Socket.');
+	}
+}
+
+
+function showContent(msg) {    
+    var div = document.getElementById("content");
+    var history = div.innerHTML;	
+    div.innerHTML = history + msg + '<br>';
+    //设置滚动条最下面显示
+    div.scrollTop = div.scrollHeight;
+}
+
+function showList(msg) {
+    var div = document.getElementById("list");
+    var list = '';
+    for(var k in msg) {
+        list += msg[k] + '<br>'; 
+    }	
+    div.innerHTML = list + '<br>';
+    //设置滚动条最下面显示
+    div.scrollTop = div.scrollHeight;
+}
+
+window.onload = function() {
+    initWebSocket();
+}
+
+document.onkeydown = function (e) {
+    var ev = document.all ? window.event : e;
+    if (ev.keyCode == 13) {
+		 var content = document.getElementById("msg_content").value;
+		 //发送消息，做到断线重连
+		 if(!websocket || websocket.readyState !== 1) {
+			websocket.close();
+			initWebSocket();
+			setTimeout(function() {
+				websocket.send(msg);
+			}, 250);
+		 } else {
+			var msg = '{"cmd":"Message","msg":"'+content+'"}';			
+			websocket.send(msg);
+		}
+		 document.getElementById("msg_content").value = '';
+        return false;
+    } else {
+        return true;
+    }
+};
+
+function send() {
+	var content = document.getElementById("msg_content").value;
+	var msg = '{"cmd":"Message","msg":"'+content+'"}';			
+	websocket.send(msg);
+	 document.getElementById("msg_content").value = '';
+	return false;
+}
+
+function getRequest(name) {   
+       var url = window.location.search; //获取url中"?"符后的字串   
+       var theRequest = new Object();   
+       if (url.indexOf("?") != -1) {   
+          var str = url.substr(1);   
+          strs = str.split("&");   
+          for(var i = 0; i < strs.length; i ++) {   
+              //就是这句的问题
+             theRequest[strs[i].split("=")[0]]=decodeURI(strs[i].split("=")[1]); 
+             //之前用了unescape()
+             //才会出现乱码  
+          }   
+       }   
+       return theRequest.name;   
+}
+
+</script>
+<style>
+@charset "utf-8"; 
+body, div{margin:0; padding:0;font-style: normal; font:12px/22px "\5B8B\4F53",Arial, Helvetica, sans-serif} 
+body{color:#000000;background:#FFF; text-align:center} 
+
+/* 以上代码设置三个共用样式 */ 
+#list{
+    border:1px solid #000;
+    text-align:left;
+    margin:10px 20px;
+    padding:5px;
+    height:500px;
+    width:100px;
+    overflow-y:auto;
+    float:left;
+}
+
+/* 以上代码设置三个共用样式 */ 
+#content{
+    border:1px solid #000;
+    text-align:left;
+    margin:10px 20px;
+    padding:5px;
+    height:500px;
+    width:480px;
+    overflow-y:auto;
+}
+#send{text-align:left;margin:10px; 20px;padding:5px}  
+</style>
+</head>
+<body>
+<div id="list"></div>
+<div id="content"></div>
+<div id="send">
+<b>请输入聊天内容，并按Enter提交：<b><br>
+<form id="msgform">
+<textarea id="msg_content" style="width:480px; height:80px;" rows="1" cols="500" contentEditable="true"></textarea>
+</form>
+<button id="send" onclick="send();">发送</button>
+</div>
+</div> 
+</body>
+</html>

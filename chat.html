@@ -11,56 +11,81 @@ WEB_SOCKET_SWF_LOCATION = "flash-websocket/WebSocketMain.swf";
 // Set this to dump debug message from Flash to console.log:
 WEB_SOCKET_DEBUG = true;
 
-var initWebSocket = function() {
-	websocket = new WebSocket('ws://192.168.7.196:9502/'); 	
-	
-	if(websocket) {
-		websocket.onopen = function (evt) {
-            var nickname = getRequest('name');
-            if(typeof(nickname) == 'undefined' || nickname == '') {
-                alert('必须的输入一个名称才可以聊天');
-                websocket.close();
-                return false;
-            } else {
-    			console.log("Connected to WebSocket server.");
-                //发送登陆消息
-                msg = new Object();
-                msg.cmd = 'Login';
-                msg.name = nickname;
-                websocket.send(JSON.stringify(msg));
-            }
-		}; 
+var CHAT_webSocket = {
+  webSocket : null,
+  timer : 0,
+  tryTime : 10,   //断线重连次数
+  initSocket : function() {
+    webSocket = new WebSocket('ws://127.0.0.1:9502/');
+    var obj = this;
+    if(webSocket) {
+      webSocket.onopen = function (evt) {
+        //清除定时器
+        clearInterval(obj.timer);
+        var nickname = getRequest('name');
+        if(typeof(nickname) == 'undefined' || nickname == '') {
+          alert('必须的输入一个名称才可以聊天');
+          webSocket.close();
+          return false;
+        } else {
+          console.log("服务器连接成功.");
+          //发送登陆消息
+          msg = new Object();
+          msg.cmd = 'Login';
+          msg.name = nickname;
+          if(webSocket.readyState == webSocket.OPEN && msg.name != '') {
+            webSocket.send(JSON.stringify(msg));
+          }
+        }
+      };
 
-		websocket.onmessage = function (evt) {
-			var data = JSON.parse(evt.data);
-            console.log(data);
-            switch(data['cmd']) {
-                case 'getOnline':
-                    showList(data['msg']);
-                    break;
-                default:
-                    showContent(data['msg']);
-                    break;
-            
-            }
-		}; 
-		
-		websocket.onclose = function (evt) { 
-			console.log("Disconnected"); 
-		}; 
+      webSocket.onmessage = function (evt) {
+        var data = JSON.parse(evt.data);
+        console.log(data);
+        switch(data['cmd']) {
+          case 'getOnline':
+            showList(data['msg']);
+            break;
+          default:
+            showContent(data['msg']);
+            break;
+        }
+      };
 
-		websocket.onerror = function (evt, e) {
-			console.log('Error occured: ' + evt.data);
-		};
-	} else {
-		console.log('Your browser does not support Web Socket.');
-	}
+      webSocket.onclose = function (evt) {
+        clearInterval(obj.timer);
+        //断线重新连接
+        obj.timer = setInterval(function () {
+          if(obj.tryTime == 0) {
+            obj.tryTime = 10;
+          }  else {
+            obj.tryTime--;
+            console.log("断线重连："+obj.tryTime+'次');
+            obj.initSocket();
+          }
+        },1000);
+
+        console.log("服务器断开连接.");
+      };
+      webSocket.onerror = function (evt, e) {
+        console.log('Error occured: ' + evt.data);
+      };
+    } else {
+      console.log('Your browser does not support Web Socket.');
+    }
+    this.webSocket = webSocket;
+    return this;
+  }
+}
+
+window.onload = function() {
+  CHAT_webSocket.initSocket();
 }
 
 
-function showContent(msg) {    
+function showContent(msg) {
     var div = document.getElementById("content");
-    var history = div.innerHTML;	
+    var history = div.innerHTML;
     div.innerHTML = history + msg + '<br>';
     //设置滚动条最下面显示
     div.scrollTop = div.scrollHeight;
@@ -70,34 +95,27 @@ function showList(msg) {
     var div = document.getElementById("list");
     var list = '';
     for(var k in msg) {
-        list += msg[k] + '<br>'; 
-    }	
+        list += msg[k] + '<br>';
+    }
     div.innerHTML = list + '<br>';
     //设置滚动条最下面显示
     div.scrollTop = div.scrollHeight;
 }
 
-window.onload = function() {
-    initWebSocket();
+function heart() {
+
 }
 
 document.onkeydown = function (e) {
     var ev = document.all ? window.event : e;
     if (ev.keyCode == 13) {
-		 var content = document.getElementById("msg_content").value;
-		 //发送消息，做到断线重连
-		 if(!websocket || websocket.readyState !== 1) {
-			websocket.close();
-			initWebSocket();
-			setTimeout(function() {
-				websocket.send(msg);
-			}, 250);
-		 } else {
-			var msg = '{"cmd":"Message","msg":"'+content+'"}';			
-			websocket.send(msg);
-		}
-		 document.getElementById("msg_content").value = '';
-        return false;
+      var content = document.getElementById("msg_content").value;
+      var msg = '{"cmd":"Message","msg":"'+content+'"}';
+      if(CHAT_webSocket.webSocket.readyState = CHAT_webSocket.webSocket.OPEN && content != '') {
+        CHAT_webSocket.webSocket.send(msg);
+      }
+      document.getElementById("msg_content").value = '';
+      return false;
     } else {
         return true;
     }
@@ -105,35 +123,35 @@ document.onkeydown = function (e) {
 
 function send() {
 	var content = document.getElementById("msg_content").value;
-	var msg = '{"cmd":"Message","msg":"'+content+'"}';			
-	websocket.send(msg);
-	 document.getElementById("msg_content").value = '';
+	var msg = '{"cmd":"Message","msg":"'+content+'"}';
+    if(CHAT_webSocket.webSocket.readyState = CHAT_webSocket.webSocket.OPEN && content != '') {
+      CHAT_webSocket.webSocket.send(msg);
+    }
+    document.getElementById("msg_content").value = '';
 	return false;
 }
 
-function getRequest(name) {   
-       var url = window.location.search; //获取url中"?"符后的字串   
-       var theRequest = new Object();   
-       if (url.indexOf("?") != -1) {   
-          var str = url.substr(1);   
-          strs = str.split("&");   
-          for(var i = 0; i < strs.length; i ++) {   
+function getRequest(name) {
+       var url = window.location.search; //获取url中"?"符后的字串
+       var theRequest = new Object();
+       if (url.indexOf("?") != -1) {
+          var str = url.substr(1);
+          strs = str.split("&");
+          for(var i = 0; i < strs.length; i ++) {
               //就是这句的问题
-             theRequest[strs[i].split("=")[0]]=decodeURI(strs[i].split("=")[1]); 
+             theRequest[strs[i].split("=")[0]]=decodeURI(strs[i].split("=")[1]);
              //之前用了unescape()
-             //才会出现乱码  
-          }   
-       }   
-       return theRequest.name;   
+             //才会出现乱码
+          }
+       }
+       return theRequest.name;
 }
-
 </script>
 <style>
-@charset "utf-8"; 
-body, div{margin:0; padding:0;font-style: normal; font:12px/22px "\5B8B\4F53",Arial, Helvetica, sans-serif} 
-body{color:#000000;background:#FFF; text-align:center} 
+body, div{margin:0; padding:0;font-style: normal; font:12px/22px "\5B8B\4F53",Arial, Helvetica, sans-serif}
+body{color:#000000;background:#FFF; text-align:center}
 
-/* 以上代码设置三个共用样式 */ 
+/* 以上代码设置三个共用样式 */
 #list{
     border:1px solid #000;
     text-align:left;
@@ -145,29 +163,28 @@ body{color:#000000;background:#FFF; text-align:center}
     float:left;
 }
 
-/* 以上代码设置三个共用样式 */ 
+/* 以上代码设置三个共用样式 */
 #content{
     border:1px solid #000;
     text-align:left;
     margin:10px 20px;
-    padding:5px;
+    padding:10px;
     height:500px;
-    width:480px;
+    width:400px;
     overflow-y:auto;
 }
-#send{text-align:left;margin:10px; 20px;padding:5px}  
+#send{text-align:left;margin:10px; 20px;padding:5px}
 </style>
 </head>
 <body>
 <div id="list"></div>
 <div id="content"></div>
 <div id="send">
-<b>请输入聊天内容，并按Enter提交：<b><br>
 <form id="msgform">
 <textarea id="msg_content" style="width:480px; height:80px;" rows="1" cols="500" contentEditable="true"></textarea>
 </form>
 <button id="send" onclick="send();">发送</button>
 </div>
-</div> 
+</div>
 </body>
 </html>

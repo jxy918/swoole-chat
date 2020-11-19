@@ -30,17 +30,17 @@ class Chat {
 	/**
      * server port
      */
-	const SERV_PORT = 9502
+	const SERV_PORT = 9502;
 	
 	/**
      * redis ip
      */
-	const REDIS_IP = '192.168.1.155';
+	const REDIS_IP = '127.0.0.1';
 	
 	/**
      * redis port
      */
-	const REDIS_PORT = 6379;
+	const REDIS_PORT = 6381;
     
     /**
      * 用户列表
@@ -131,8 +131,8 @@ class Chat {
         $name = $data['name'];       
         //判断用户名是否登录过， 如果登陆过， 关闭之前的连接
         if($key = array_search($name, self::$userlist)) {
-            $status = $server->close($key);           
-        }       
+            unset(self::$userlist[$key]);
+        }
         self::$userlist[$frame->fd] = $name;                               
         $data = array(
             'cmd'=>'login',
@@ -155,7 +155,9 @@ class Chat {
     private static function cmdGetOnline($server, $frame) {
         $userlist = array();       
         foreach($server->connections as $fd) {
-        	$userlist[$fd] =  self::$userlist[$fd];
+            if(isset(self::$userlist[$fd])) {
+                $userlist[$fd] = self::$userlist[$fd];
+            }
         }      
         $data = array(
             'cmd'=>'getOnline',

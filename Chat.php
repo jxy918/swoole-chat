@@ -16,8 +16,8 @@ class Chat {
         'backlog' => 128,   //listen backlog
         'max_request' => 50,
         'open_cpu_affinity' => 1,
-//      'heartbeat_check_interval' => 300, //每隔多少秒检测一次，单位秒，Swoole会轮询所有TCP连接，将超过心跳时间的连接关闭掉
-//      'heartbeat_idle_time' => 600, //TCP连接的最大闲置时间，单位s , 如果某fd最后一次发包距离现在的时间超过heartbeat_idle_time会把这个连接关闭。 
+//        'heartbeat_check_interval' => 60, //每隔多少秒检测一次，单位秒，Swoole会轮询所有TCP连接，将超过心跳时间的连接关闭掉
+//        'heartbeat_idle_time' => 60, //TCP连接的最大闲置时间，单位s , 如果某fd最后一次发包距离现在的时间超过heartbeat_idle_time会把这个连接关闭。
     );
     
     private static $serv = null;
@@ -132,6 +132,7 @@ class Chat {
         //判断用户名是否登录过， 如果登陆过， 关闭之前的连接
         if($key = array_search($name, self::$userlist)) {
             unset(self::$userlist[$key]);
+            //$server->close($key);
         }
         self::$userlist[$frame->fd] = $name;                               
         $data = array(

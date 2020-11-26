@@ -25,7 +25,6 @@ var CHAT_webSocket = {
         var nickname = getRequest('name');
         if(typeof(nickname) == 'undefined' || nickname == '') {
           alert('必须的输入一个名称才可以聊天');
-          webSocket.close();
           return false;
         } else {
           console.log("服务器连接成功.");
@@ -56,9 +55,7 @@ var CHAT_webSocket = {
         clearInterval(obj.timer);
         //断线重新连接
         obj.timer = setInterval(function () {
-          if(obj.tryTime == 0) {
-            obj.tryTime = 10;
-          }  else {
+          if(obj.tryTime > 0) {
             obj.tryTime--;
             console.log("断线重连："+obj.tryTime+'次');
             obj.initSocket();
@@ -150,14 +147,46 @@ function getRequest(name) {
 <style>
 body, div{margin:0; padding:0;font-style: normal; font:12px/22px "\5B8B\4F53",Arial, Helvetica, sans-serif}
 body{color:#000000;background:#FFF; text-align:center}
+/* 以上代码设置三个共用样式 */
+#layout{
+  border:1px solid #000;
+  margin:10px 10px;
+  padding:5px;
+  height:600px;
+  width:560px;
+  background-color: #3d3d3d;
+}
+#header{
+  border:1px solid #000;
+  text-align:center;
+  margin:10px 10px;
+  padding:5px;
+  width:532px;
+  font-size: 20px;
+  font-width: bold;
+  color:#fff;
+  background-color: #1b1e21;
+}
+
+#mid{
+  border:1px solid #000;
+  text-align:center;
+  margin:10px 10px;
+  padding:5px;
+  width:532px;
+  font-size: 20px;
+  font-width: bold;
+  color:#fff;
+}
+
 
 /* 以上代码设置三个共用样式 */
 #list{
     border:1px solid #000;
     text-align:left;
-    margin:10px 20px;
+    margin:10px 10px;
     padding:5px;
-    height:500px;
+    height:400px;
     width:100px;
     overflow-y:auto;
     float:left;
@@ -167,24 +196,35 @@ body{color:#000000;background:#FFF; text-align:center}
 #content{
     border:1px solid #000;
     text-align:left;
-    margin:10px 20px;
+    margin:10px 10px;
     padding:10px;
-    height:500px;
-    width:400px;
+    height:400px;
+    width:360px;
     overflow-y:auto;
 }
-#send{text-align:left;margin:10px; 20px;padding:5px}
+#send{
+  border:1px solid #000;
+  text-align:left;
+  margin:10px 10px;
+  padding:5px;
+  width:530px;
+
+}
 </style>
 </head>
 <body>
-<div id="list"></div>
-<div id="content"></div>
-<div id="send">
-<form id="msgform">
-<textarea id="msg_content" style="width:480px; height:80px;" rows="1" cols="500" contentEditable="true"></textarea>
-</form>
-<button id="send" onclick="send();">发送</button>
-</div>
+<div id="layout">
+  <div id="header">简单聊天室demo</div>
+  <div id="mid">
+    <div id="list"></div>
+    <div id="content"></div>
+  </div>
+  <div id="send">
+    <form id="msgform">
+      <textarea id="msg_content" style="width:500px; height:30px;" rows="1" cols="100" contentEditable="true"></textarea>
+    </form>
+    <button onclick="send();">发送</button>
+  </div>
 </div>
 </body>
 </html>
